@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="pt-BR" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jogo da Velha</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Outfit', sans-serif; }
+    .cell {
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+    .cell:hover:not(.taken) {
+      background: #2a2a3e;
+      transform: scale(1.04);
+    }
+    .cell.taken { cursor: default; }
+    .cell.win-cell { animation: winPulse 0.6s ease infinite alternate; }
+    @keyframes winPulse {
+      from { box-shadow: 0 0 0 0 rgba(99,255,182,0.4); }
+      to { box-shadow: 0 0 20px 6px rgba(99,255,182,0.15); }
+    }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    .fade-in { animation: fadeIn 0.4s ease forwards; }
+    @keyframes pop { 0%{transform:scale(0)} 60%{transform:scale(1.15)} 100%{transform:scale(1)} }
+    .pop { animation: pop 0.25s ease forwards; }
+  </style>
+  <style>body { box-sizing: border-box; }</style>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js" type="text/javascript"></script>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full">
+  <div id="app" class="h-full w-full flex flex-col items-center justify-center overflow-auto" style="background:#12121f;">
+   <h1 id="title" class="text-3xl font-extrabold mb-2 fade-in" style="color:#63ffb6;">Jogo da Velha</h1>
+   <p id="status" class="text-lg font-semibold mb-5 fade-in" style="color:#c4c4e0;">Vez do <span id="turn-symbol" style="color:#63ffb6;">X</span></p>
+   <div id="board" class="grid grid-cols-3 gap-2.5 mb-6 fade-in" style="width:min(85vw,320px);height:min(85vw,320px);">
+   </div>
+   <div class="flex gap-8 mb-4 fade-in" id="scoreboard">
+    <div class="text-center">
+     <div class="text-sm font-semibold" style="color:#63ffb6;">
+      X
+     </div>
+     <div id="score-x" class="text-2xl font-extrabold" style="color:#e8e8f0;">
+      0
+     </div>
+    </div>
+    <div class="text-center">
+     <div class="text-sm font-semibold" style="color:#c4c4e0;">
+      Empate
+     </div>
+     <div id="score-d" class="text-2xl font-extrabold" style="color:#e8e8f0;">
+      0
+     </div>
+    </div>
+    <div class="text-center">
+     <div class="text-sm font-semibold" style="color:#f472b6;">
+      O
+     </div>
+     <div id="score-o" class="text-2xl font-extrabold" style="color:#e8e8f0;">
+      0
+     </div>
+    </div>
+   </div><button id="reset-btn" onclick="resetGame()" class="px-6 py-2.5 rounded-xl font-bold text-sm tracking-wide transition-all hover:scale-105 active:scale-95 fade-in" style="background:#1e1e32;color:#63ffb6;border:1.5px solid #63ffb6;"> Nova Partida </button>
+  </div>
+  <script>
+    const WINS = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+    let board = Array(9).fill('');
+    let current = 'X';
+    let gameOver = false;
+    let scores = { X:0, O:0, D:0 };
+
+    const boardEl = document.getElementById('board');
+    const cells = [];
+
+    for (let i = 0; i < 9; i++) {
+      const c = document.createElement('div');
+      c.className = 'cell flex items-center justify-center rounded-xl text-4xl font-extrabold select-none';
+      c.style.cssText = 'background:#1e1e32;color:#e8e8f0;aspect-ratio:1;';
+      c.addEventListener('click', () => play(i));
+      boardEl.appendChild(c);
+      cells.push(c);
+    }
+
+    function play(i) {
+      if (gameOver || board[i]) return;
+      board[i] = current;
+      const cell = cells[i];
+      cell.textContent = current;
+      cell.classList.add('taken','pop');
+      cell.style.color = current === 'X' ? '#63ffb6' : '#f472b6';
+
+      const win = WINS.find(w => w.every(j => board[j] === current));
+      if (win) {
+        gameOver = true;
+        win.forEach(j => cells[j].classList.add('win-cell'));
+        scores[current]++;
+        updateScore();
+        setStatus(`${current} venceu! 🎉`);
+        return;
+      }
+      if (board.every(v => v)) {
+        gameOver = true;
+        scores.D++;
+        updateScore();
+        setStatus('Empate! 🤝');
+        return;
+      }
+      current = current === 'X' ? 'O' : 'X';
+      setTurn();
+    }
+
+    function setTurn() {
+      const ts = document.getElementById('turn-symbol');
+      ts.textContent = current;
+      ts.style.color = current === 'X' ? '#63ffb6' : '#f472b6';
+      document.getElementById('status').innerHTML = `Vez do <span id="turn-symbol" style="color:${current==='X'?'#63ffb6':'#f472b6'}">${current}</span>`;
+    }
+
+    function setStatus(msg) {
+      document.getElementById('status').textContent = msg;
+    }
+
+    function updateScore() {
+      document.getElementById('score-x').textContent = scores.X;
+      document.getElementById('score-o').textContent = scores.O;
+      document.getElementById('score-d').textContent = scores.D;
+    }
+
+    function resetGame() {
+      board = Array(9).fill('');
+      current = 'X';
+      gameOver = false;
+      cells.forEach(c => {
+        c.textContent = '';
+        c.className = 'cell flex items-center justify-center rounded-xl text-4xl font-extrabold select-none';
+        c.style.cssText = 'background:#1e1e32;color:#e8e8f0;aspect-ratio:1;';
+      });
+      setTurn();
+    }
+
+    // Element SDK
+    const defaultConfig = {
+      game_title: 'Jogo da Velha',
+      background_color: '#12121f',
+      surface_color: '#1e1e32',
+      text_color: '#e8e8f0',
+      primary_action: '#63ffb6',
+      secondary_action: '#f472b6',
+      font_family: 'Outfit',
+      font_size: 16
+    };
+
+    function applyConfig(config) {
+      const bg = config.background_color || defaultConfig.background_color;
+      const sf = config.surface_color || defaultConfig.surface_color;
+      const tx = config.text_color || defaultConfig.text_color;
+      const pa = config.primary_action || defaultConfig.primary_action;
+      const sa = config.secondary_action || defaultConfig.secondary_action;
+      const ff = config.font_family || defaultConfig.font_family;
+      const fs = config.font_size || defaultConfig.font_size;
+      const title = config.game_title || defaultConfig.game_title;
+
+      document.getElementById('app').style.background = bg;
+      document.getElementById('title').textContent = title;
+      document.getElementById('title').style.color = pa;
+      document.getElementById('title').style.fontFamily = `${ff}, sans-serif`;
+      document.getElementById('title').style.fontSize = `${fs * 1.9}px`;
+      document.getElementById('status').style.color = tx;
+      document.getElementById('status').style.fontFamily = `${ff}, sans-serif`;
+      document.getElementById('status').style.fontSize = `${fs * 1.1}px`;
+
+      const btn = document.getElementById('reset-btn');
+      btn.style.background = sf;
+      btn.style.color = pa;
+      btn.style.borderColor = pa;
+      btn.style.fontFamily = `${ff}, sans-serif`;
+      btn.style.fontSize = `${fs * 0.85}px`;
+
+      document.querySelectorAll('#scoreboard > div').forEach(d => {
+        d.style.fontFamily = `${ff}, sans-serif`;
+      });
+      document.querySelectorAll('#scoreboard .text-2xl').forEach(d => {
+        d.style.color = tx;
+        d.style.fontSize = `${fs * 1.5}px`;
+      });
+      const labels = document.querySelectorAll('#scoreboard .text-sm');
+      if(labels[0]) labels[0].style.color = pa;
+      if(labels[1]) labels[1].style.color = tx;
+      if(labels[2]) labels[2].style.color = sa;
+
+      cells.forEach((c, i) => {
+        if (!board[i]) c.style.background = sf;
+        else {
+          c.style.background = sf;
+          c.style.color = board[i] === 'X' ? pa : sa;
+        }
+        c.style.fontFamily = `${ff}, sans-serif`;
+        c.style.fontSize = `${fs * 2.2}px`;
+      });
+    }
+
+    if (window.elementSdk) {
+      window.elementSdk.init({
+        defaultConfig,
+        onConfigChange: async (config) => applyConfig(config),
+        mapToCapabilities: (config) => ({
+          recolorables: [
+            { get: () => config.background_color || defaultConfig.background_color, set: v => { config.background_color = v; window.elementSdk.setConfig({ background_color: v }); } },
+            { get: () => config.surface_color || defaultConfig.surface_color, set: v => { config.surface_color = v; window.elementSdk.setConfig({ surface_color: v }); } },
+            { get: () => config.text_color || defaultConfig.text_color, set: v => { config.text_color = v; window.elementSdk.setConfig({ text_color: v }); } },
+            { get: () => config.primary_action || defaultConfig.primary_action, set: v => { config.primary_action = v; window.elementSdk.setConfig({ primary_action: v }); } },
+            { get: () => config.secondary_action || defaultConfig.secondary_action, set: v => { config.secondary_action = v; window.elementSdk.setConfig({ secondary_action: v }); } }
+          ],
+          borderables: [],
+          fontEditable: { get: () => config.font_family || defaultConfig.font_family, set: v => { config.font_family = v; window.elementSdk.setConfig({ font_family: v }); } },
+          fontSizeable: { get: () => config.font_size || defaultConfig.font_size, set: v => { config.font_size = v; window.elementSdk.setConfig({ font_size: v }); } }
+        }),
+        mapToEditPanelValues: (config) => new Map([
+          ['game_title', config.game_title || defaultConfig.game_title]
+        ])
+      });
+    }
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a02023052993628e',t:'MTc3OTgzMzcwOA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
